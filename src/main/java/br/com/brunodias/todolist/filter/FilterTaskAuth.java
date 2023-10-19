@@ -28,31 +28,32 @@ public class FilterTaskAuth extends OncePerRequestFilter{
             
         // Checar a path
         String serverletPath = request.getServletPath();
-        if(!serverletPath.equals("/tasks/")){
-            filterChain.doFilter(request, response);
-        }
-    
-        // Receber auth
-        String authEncoded = request.getHeader("Authorization")
-        .substring("Basic".length()).trim();
+        if(serverletPath.startsWith("/tasks/")){
+            // Receber auth
+            String authEncoded = request.getHeader("Authorization")
+            .substring("Basic".length()).trim();
 
-        // Decode auth
-        String authDecoded = new String(Base64.getDecoder().decode(authEncoded));
-        String[] credentials = authDecoded.split(":");
-        String username = credentials[0];
-        String password = credentials[1];
+            // Decode auth
+            String authDecoded = new String(Base64.getDecoder().decode(authEncoded));
+            String[] credentials = authDecoded.split(":");
+            String username = credentials[0];
+            String password = credentials[1];
 
-        // Validar usuário
-        UserModel user = this.userRepository.findByUsername(username);
-        if(user == null){
-            response.sendError(401, "Usuário ou senha incorretos");
-        }else{
-            Result verificationResult = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
-            if(verificationResult.verified){
-                filterChain.doFilter(request, response);
-            }else{
+            // Validar usuário
+            UserModel user = this.userRepository.findByUsername(username);
+            if(user == null){
                 response.sendError(401, "Usuário ou senha incorretos");
+            }else{
+                Result verificationResult = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
+                if(verificationResult.verified){
+                    request.setAttribute("idUser", user.getId());
+                    filterChain.doFilter(request, response);
+                }else{
+                    response.sendError(401, "Usuário ou senha incorretos");
+                }
             }
+        }else{
+            filterChain.doFilter(request, response);
         }
     }
 }
